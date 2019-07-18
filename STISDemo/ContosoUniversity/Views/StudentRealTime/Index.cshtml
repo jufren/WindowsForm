@@ -1,0 +1,73 @@
+﻿@model IEnumerable<ContosoUniversity.Models.Student>
+
+@{
+    ViewBag.Title = "Index";
+}
+
+<h2>Index</h2>
+
+@*<p>
+        @Html.ActionLink("Create New", "Create")
+    </p>*@
+<div id="tblStudents">
+    @Html.Partial("IndexPartial", Model)
+</div>
+
+@section scripts {
+
+    <script src="~/Scripts/jquery.signalR-2.4.0.min.js"></script>
+    <script src="~/signalr/hubs"></script>
+
+    <script type="text/javascript">
+        var signalRHubInitialized = false;
+        var statement = '';
+        $(function () {
+            InitializeSignalRHubStore();
+        });
+
+        function InitializeSignalRHubStore() {
+
+            if (signalRHubInitialized)
+                return;
+
+            try {
+                var clientHub = $.connection.studenthub;
+                clientHub.client.broadcastMessage = function (message) {
+                    if (message === "Refresh")
+                    {
+                        ReloadIndexPartial();
+                        
+                    }
+                };
+                $.connection.hub.disconnected(function () {
+                    if ($.connection.hub.lastError) { alert("Disconnected. Reason: " + $.connection.hub.lastError.message); }
+                    setTimeout(function () {
+                        $.connection.hub.start();
+                    }, 5000); // Restart connection after 5 seconds.
+                });
+                $.connection.hub.start().done(function () {
+                    
+                    //clientHub.server.initialize($("#NotifierEntity").val());
+                    clientHub.server.initialize(statement);
+                    signalRHubInitialized = true;
+                });
+
+            } catch (err) {
+                signalRHubInitialized = false;
+            }
+        };
+
+        function ReloadIndexPartial() {
+
+            $.post('@(Url.Action("IndexPartial", "StudentRealTime", null, Request.Url.Scheme))')
+                .done(function (response) {
+                    $("#tblStudents").html(response)
+                    if (!signalRHubInitialized)
+                        InitializeSignalRHubStore();
+                });
+        };
+        
+    </script>
+}
+
+
